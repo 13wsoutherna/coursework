@@ -1,28 +1,28 @@
 from tkinter import *
 import tkinter.messagebox
 import sqlite3
-sqlite_file = '/Users/adam/Documents/Python/Coursework Project/accounts.db'
+sqlite_file = '/Users/adam/Documents/Python/Coursework Project/project.db'
 con = sqlite3.connect(sqlite_file)
 c = con.cursor()
 
 class LoginScreen():
     def __init__(self, master):
         self.master = master
-        c.execute("CREATE TABLE IF NOT EXISTS Accounts (UserID INTEGER PRIMARY KEY, Username varchar(16), Password varchar(16))")
+        c.execute("CREATE TABLE IF NOT EXISTS Accounts (UserID INTEGER PRIMARY KEY, Username varchar(16), Password varchar(16))") #Create table to hold usernames and passwords
 
         self.usernameLabel = Label(master, text="Username:") #Creating labels for "Username" and "Password"
         self.passwordLabel = Label(master, text="Password:")
         self.userEntry = Entry(master) #Creating entry boxes to hold input
         self.passEntry = Entry(master, show="*") #Replaces password characters with *
 
-        self.usernameLabel.grid(row=0, sticky=W) #Places each element
+        self.usernameLabel.grid(row=0, sticky=W) #Places each element using grid layout
         self.passwordLabel.grid(row=1, sticky=W)
         self.userEntry.grid(row=0, column=1)
         self.passEntry.grid(row=1, column=1)
 
         self.buttonFrame = Frame(master)
         self.loginButton = Button(self.buttonFrame, text="LOGIN", command=self.login_btn, padx=10) #Runs login_btn when button clicked
-        self.registerButton = Button(self.buttonFrame, text="REGISTER", command=self.register_btn, padx=10)
+        self.registerButton = Button(self.buttonFrame, text="REGISTER", command=self.register_btn, padx=10) #Runs register_btn when clicked
         self.loginButton.pack(side="left")
         self.registerButton.pack(side="right")
         self.buttonFrame.grid(row=3, column=1, columnspan=2, sticky="nesw")
@@ -31,10 +31,10 @@ class LoginScreen():
         username = self.userEntry.get() #Retrieves text from entry boxes
         password = self.passEntry.get()
 
-        c.execute("SELECT Password FROM Accounts WHERE Username=? AND Password=?", (username, password))
+        c.execute("SELECT Password FROM Accounts WHERE Username=? AND Password=?", (username, password)) #Querying for password of the username entered
         if c.fetchone() is not None:
-            print("login successfull")
-            self.switch_window()
+            print("login successful")
+            self.switch_window() #If a password is returned from the query, the match is true and the main program will be shown
         else:
             tkinter.messagebox.showwarning("Error", "Incorrect username or password")
         
@@ -43,7 +43,7 @@ class LoginScreen():
         if (password != result[0] or result is None):
             tkinter.messagebox.showwarning("Error", "Incorrect username or password")
         else:
-            print("login successfull")
+            print("login successful")
             self.switch_window() """
     
     def register_btn(self):
@@ -51,8 +51,7 @@ class LoginScreen():
         password = self.passEntry.get()
         c.execute("SELECT Username FROM Accounts WHERE Username='" + username + "'")
         selected_username = c.fetchone()
-        print(selected_username)
-        if selected_username:
+        if selected_username: #Testing each case of invalid usernames/passwords
             print("not available")
             tkinter.messagebox.showwarning("Error", "This username has already been taken")
         elif (not password):
@@ -65,7 +64,7 @@ class LoginScreen():
 
         con.commit()
 
-    def switch_window(self): #Shows main window
+    def switch_window(self): #Shows main window and removes LoginScreen from view
         self.master.withdraw()
         toplevel = Toplevel(self.master)
         w = toplevel.winfo_screenwidth()
@@ -81,7 +80,7 @@ class MainProgram:
         self.quitButton.pack()
         self.frame.pack()
     def close_windows(self):
-        self.master.destroy()
+        self.master.quit()
 
 root = Tk()
 root.title("Login")
