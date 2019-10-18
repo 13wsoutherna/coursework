@@ -4,10 +4,14 @@ import sqlite3
 sqlite_file = '/Users/adam/Documents/Python/Coursework Project/project.db'
 con = sqlite3.connect(sqlite_file)
 c = con.cursor()
+current_user = ""
+skip_login = False
 
 class LoginScreen():
     def __init__(self, master):
         self.master = master
+        if skip_login:
+            self.switch_window()
         c.execute("CREATE TABLE IF NOT EXISTS Accounts (UserID INTEGER PRIMARY KEY, Username varchar(16), Password varchar(16))") #Create table to hold usernames and passwords
 
         self.usernameLabel = Label(master, text="Username:") #Creating labels for "Username" and "Password"
@@ -28,12 +32,14 @@ class LoginScreen():
         self.buttonFrame.grid(row=3, column=1, columnspan=2, sticky="nesw")
     
     def login_btn(self):
+        global current_user
         username = self.userEntry.get() #Retrieves text from entry boxes
         password = self.passEntry.get()
 
         c.execute("SELECT Password FROM Accounts WHERE Username=? AND Password=?", (username, password)) #Querying for password of the username entered
         if c.fetchone() is not None:
             print("login successful")
+            current_user = username
             self.switch_window() #If a password is returned from the query, the match is true and the main program will be shown
         else:
             tkinter.messagebox.showwarning("Error", "Incorrect username or password")
@@ -75,12 +81,62 @@ class LoginScreen():
 class MainProgram:
     def __init__(self, master):
         self.master = master
-        self.frame = Frame(self.master)
-        self.quitButton = Button(self.frame, text = 'Quit', width = 25, command = self.close_windows)
-        self.quitButton.pack()
-        self.frame.pack()
+        self.toolbar()
+        c.execute("CREATE TABLE IF NOT EXISTS Catalogues (CatalogueID INTEGER PRIMARY KEY, CatalogueName TEXT, OwnerID INTEGER, DateCreated DATE, Archived BIT, FOREIGN KEY(OwnerID) REFERENCES Accounts(UserID))") #Create catalogues table and set UserID/OwnerID as foreign key
+
+        self.left_panel = Frame(self.master,bg="grey", highlightbackground="black", highlightthickness=1) #Creates two frames to fill the left and right of the window
+        self.right_panel = Frame(self.master,bg="white", highlightbackground="black", highlightthickness=1)
+
+        self.left_panel.grid(row=0,column=0, sticky='nsew')
+        self.right_panel.grid(row=0,column=1, sticky='nsew')
+
+        self.master.rowconfigure(0, weight=1) #Configure grid layout
+        self.master.columnconfigure(0, weight=1, uniform="x")
+        self.master.columnconfigure(1, weight=1, uniform="x")
+
+        self.catalogue_list()
+
+    def catalogue_list(self):
+        global current_user
+        self.listbox = Listbox(self.left_panel) #Create list box to hold catalogues
+        c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = '"+current_user+"'") #Select catalogue name and the owner's username
+        result = c.fetchall()
+        counter = 1
+        for i in result: #Inserts catalogues owned by current user into the listbox
+            self.listbox.insert(counter, i)
+            counter+=1
+        self.listbox.pack(side=LEFT, fill="x", expand=TRUE)
+
     def close_windows(self):
         self.master.quit()
+
+    def toolbar(self):
+        global current_user
+        toolbar = Menu(self.master)
+        self.master.config(menu=toolbar)
+
+        #File Menu
+        fileMenu = Menu(toolbar)
+        toolbar.add_cascade(label="File", menu=fileMenu)
+        fileMenu.add_command(label="Create", command=self.create_ctlg)
+        fileMenu.add_command(label="Delete", command=self.delete_ctlg)
+        fileMenu.add_separator()
+        fileMenu.add_command(label="Exit", command=self.close_windows)
+        #User Menu
+        userMenu = Menu(toolbar)
+        toolbar.add_cascade(label="User", menu=userMenu)
+        userMenu.add_command(label=current_user)
+        userMenu.add_separator()
+        userMenu.add_command(label="Preferences", command=self.user_preferences)  
+
+    def create_ctlg(self):
+        pass
+
+    def delete_ctlg(self):
+        pass
+
+    def user_preferences(self):
+        pass
 
 root = Tk()
 root.title("Login")
