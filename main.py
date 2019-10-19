@@ -4,8 +4,8 @@ import sqlite3
 sqlite_file = '/Users/adam/Documents/Python/Coursework Project/project.db'
 con = sqlite3.connect(sqlite_file)
 c = con.cursor()
-current_user = ""
-skip_login = False
+current_user = "username1"
+skip_login = True
 
 class LoginScreen():
     def __init__(self, master):
@@ -95,17 +95,46 @@ class MainProgram:
         self.master.columnconfigure(1, weight=1, uniform="x")
 
         self.catalogue_list()
+        self.catalogue_details()
 
     def catalogue_list(self):
         global current_user
-        self.listbox = Listbox(self.left_panel) #Create list box to hold catalogues
+        self.header_catalogues = Label(self.left_panel, text="Catalogues:", font=("Helvetica", 54))
+        self.listbox = Listbox(self.left_panel, selectmode=SINGLE) #Create list box to hold catalogues
         c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = '"+current_user+"'") #Select catalogue name and the owner's username
         result = c.fetchall()
         counter = 1
         for i in result: #Inserts catalogues owned by current user into the listbox
             self.listbox.insert(counter, i)
             counter+=1
-        self.listbox.pack(side=LEFT, fill="x", expand=TRUE)
+        self.header_catalogues.pack(side=TOP, anchor=W)
+        self.listbox.pack(side=TOP, anchor=W)
+    
+    def update_selected_catalogue(self):
+        self.selection = self.listbox.get(self.listbox.curselection()[0])[0]
+        self.catalogue_name.delete(0,50)
+        self.catalogue_name.insert(0, self.selection)
+        c.execute("SELECT DateCreated FROM Catalogues WHERE CatalogueName = '"+self.selection+"'")
+        self.date_created.delete(0,50)
+        self.date_created.insert(0, c.fetchone()[0])
+
+    def catalogue_details(self):
+        global current_user
+        self.header_details = Label(self.right_panel, text="Details", font=("Helvetica", 54))
+        self.label_catalogue_name = Label(self.right_panel, text="Catalogue Name:")
+        self.catalogue_name = Entry(self.right_panel)
+        self.catalogue_name.insert(0, "-")
+        self.label_date = Label(self.right_panel, text="Date Created:")
+        self.date_created = Entry(self.right_panel)
+        self.date_created.insert(0, "-")
+        
+        self.header_details.grid(row=0, column=0, columnspan=2)
+        self.label_catalogue_name.grid(row=1, column=0, sticky=W)
+        self.catalogue_name.grid(row=1, column=3, sticky=E)
+        self.label_date.grid(row=2, column=0, sticky=W)
+        self.date_created.grid(row=2, column=3, sticky=E)
+
+        self.listbox.bind("<ButtonRelease-1>", lambda e:self.update_selected_catalogue())
 
     def close_windows(self):
         self.master.quit()
