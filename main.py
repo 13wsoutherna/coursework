@@ -86,6 +86,8 @@ class MainProgram:
         self.master.title(self.current_user)
         self.toolbar()
         self.colour_1 = "grey"
+        self.right_panel_state = True
+        self.master.protocol("WM_DELETE_WINDOW", self.close_windows)
         c.execute("CREATE TABLE IF NOT EXISTS Catalogues (CatalogueID INTEGER PRIMARY KEY, CatalogueName TEXT, OwnerID INTEGER, DateCreated DATE, Archived BIT, FOREIGN KEY(OwnerID) REFERENCES Accounts(UserID))") #Create catalogues table and set UserID/OwnerID as foreign key
         c.execute("CREATE TABLE IF NOT EXISTS Items (ItemID INTEGER PRIMARY KEY, ItemName TEXT, Description TEXT, Catalogue TEXT, DateCreated DATE)")
 
@@ -98,10 +100,71 @@ class MainProgram:
         self.master.rowconfigure(0, weight=1) #Configure grid layout
         self.master.columnconfigure(0, weight=1, uniform="x")
         self.master.columnconfigure(1, weight=1, uniform="x")
-
         self.catalogue_list()
         self.catalogue_details()
         self.item_list()
+        self.catalogue_listbox.bind("<ButtonRelease-1>", lambda e:[self.catalogue_details(), self.update_selected_catalogue(), self.update_item_list()]) #Updates catalogue details when selected
+        self.item_listbox.bind("<ButtonRelease-1>", lambda e:[self.item_details(), self.update_selected_item()])
+
+    def item_details(self):
+        self.right_panel_state = False #Flag used to distinguish between the catalogue details and an item's
+        for child in self.right_panel.winfo_children(): #Removes all right_panels children
+            child.destroy()
+        self.header_item_details = Label(self.right_panel, text="Details", font=("Helvetica", 54))
+        self.label_item_name = Label(self.right_panel, text="Item Name:")
+        self.item_name = Entry(self.right_panel)
+        self.item_name.insert(0, "-")
+
+        self.item_catalogue = Label(self.right_panel, text="Catalogue:")
+        self.item_catalogue_entry = Entry(self.right_panel)
+        self.item_catalogue_entry.insert(0, "-")
+        
+        self.label_item_date = Label(self.right_panel, text="Date Created:")
+        self.item_date_created = Entry(self.right_panel)
+        self.item_date_created.insert(0, "-")
+
+        self.item_description = Label(self.right_panel, text="Description:")
+        self.item_description_entry = Text(self.right_panel, height=5, width=27, highlightbackground="BLACK")
+        self.item_description_entry.insert(END, "-")
+
+        self.update_item_btn = Button(self.right_panel, text="Update", command=self.update_item_details)
+        
+        self.header_item_details.grid(row=0, column=0, columnspan=1)
+        self.label_item_name.grid(row=1, column=0, sticky=W)
+        self.item_name.grid(row=1, column=3, sticky=W)
+        self.item_catalogue.grid(row=2, column=0, sticky=W)
+        self.item_catalogue_entry.grid(row=2, column=3, sticky=W)
+        self.label_item_date.grid(row=3, column=0, sticky=W)
+        self.item_date_created.grid(row=3, column=3, sticky=W)
+        self.item_description.grid(row=4, column=0, sticky=NW)
+        self.item_description_entry.grid(row=4, column=3, sticky=W)
+        self.update_item_btn.grid(row=5, column=3)
+
+    def update_selected_item(self):
+        selection = self.item_listbox.get(self.item_listbox.curselection()[0])[0] #Gets the catalogue that is selected
+        if selection is not "" and self.right_panel_state is False:
+            c.execute("SELECT Description, Catalogue, DateCreated, ItemID FROM Items WHERE ItemName = ?", (selection,))
+            item_details = c.fetchall()[0]
+            self.item_name.delete(0,50)
+            self.item_name.insert(0, selection)
+            self.item_catalogue_entry.delete(0,50)
+            self.item_catalogue_entry.insert(0, item_details[1])
+            self.item_date_created.delete(0,50)
+            self.item_date_created.insert(0, item_details[2])
+            self.item_description_entry.delete('1.0',END)
+            self.item_description_entry.insert(INSERT, item_details[0])
+            self.current_itemid = item_details[3]
+
+            self.item_catalogue_entry.bind("<Key>", lambda e: "break")
+            self.item_date_created.bind("<Key>", lambda e: "break")
+
+    def update_item_details(self):
+        new_item_name = self.item_name.get()
+        new_item_description = self.item_description_entry.get('1.0', END)
+
+        c.execute("UPDATE Items SET ItemName = ?, Description = ? WHERE ItemID = ?", (new_item_name, new_item_description, self.current_itemid))
+        con.commit()
+        self.update_item_list()
 
     def create_ctlg_popup(self):
         popup_window = CreateCtlgPopup(self.master) #Creates popup window for new catalogue
@@ -166,7 +229,7 @@ class MainProgram:
         self.header_items = Label(self.left_panel, text="Items", font=("Helvetica", 54), bg=self.colour_1)
         self.indexes_items = Text(self.left_panel, width=4, font=("Helvetica", 15), height=1, background=self.colour_1, borderwidth=0, highlightthickness=0)
         self.item_listbox = Listbox(self.left_panel, selectmode=SINGLE, font=("Helvetica", 15), height=1, bg=self.colour_1, borderwidth=0, highlightthickness=0) #Create list box to hold catalogues
-        self.header_items.grid(row=0, column=2, sticky=W)
+        self.header_items.grid(row=0, column=3, sticky=W)
         self.indexes_items.grid(row=1, column=2, sticky=N)
         self.item_listbox.grid(row=1, column=3, sticky=NW)
         self.item_listbox.configure(exportselection = False)
@@ -210,17 +273,30 @@ class MainProgram:
         self.indexes_catalogues.configure(state=DISABLED)
     
     def update_selected_catalogue(self):
+        self.right_panel_state = True
         selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection()[0])[0] #Gets the catalogue that is selected
-        self.catalogue_name.delete(0,50)
-        self.catalogue_name.insert(0, selection)
-        c.execute("SELECT DateCreated FROM Catalogues WHERE CatalogueName = '"+selection+"'")
-        #self.date_created.configure(state=NORMAL)
-        self.date_created.delete(0,50)
-        self.date_created.insert(0, c.fetchone()[0])
-        self.date_created.bind("<Key>", lambda e: "break")
-        #self.date_created.configure(state=DISABLED)
-
+        if selection is not "" and self.right_panel_state is True:
+            self.catalogue_name.delete(0,50)
+            self.catalogue_name.insert(0, selection)
+            c.execute("SELECT DateCreated, Archived FROM Catalogues WHERE CatalogueName = ?", (selection,))
+            result = c.fetchall()[0]
+            #self.date_created.configure(state=NORMAL)
+            self.date_created.delete(0,50)
+            self.date_created.insert(0, result[0])
+            if result[1] == 1:
+                self.archived_entry.select()
+            else:
+                self.archived_entry.deselect()
+            c.execute("SELECT COUNT(*) FROM Items WHERE Catalogue = ?", (selection,))
+            self.no_items_entry.delete(0,50)
+            self.no_items_entry.insert(0, c.fetchone()[0])
+            self.date_created.bind("<Key>", lambda e: "break")
+            #self.date_created.configure(state=DISABLED) 
+        
     def catalogue_details(self):
+        self.right_panel_state = True
+        for child in self.right_panel.winfo_children(): #Removes all children inside of the right_panel frame
+            child.destroy()
         self.header_details = Label(self.right_panel, text="Details", font=("Helvetica", 54)) #Creating headers
         self.label_catalogue_name = Label(self.right_panel, text="Catalogue Name:")
         self.catalogue_name = Entry(self.right_panel) #Entry to hold catalogue details
@@ -228,42 +304,48 @@ class MainProgram:
         self.label_date = Label(self.right_panel, text="Date Created:")
         self.date_created = Entry(self.right_panel)
         self.date_created.insert(0, "-")
+        self.no_items = Label(self.right_panel, text="No. of Items:")
+        self.no_items_entry = Entry(self.right_panel)
+        self.archived = Label(self.right_panel, text="Archived:")
+        self.archived_entry = Checkbutton(self.right_panel)
         
         self.header_details.grid(row=0, column=0, columnspan=1)
         self.label_catalogue_name.grid(row=1, column=0, sticky=W)
         self.catalogue_name.grid(row=1, column=3, sticky=E)
         self.label_date.grid(row=2, column=0, sticky=W)
         self.date_created.grid(row=2, column=3, sticky=E)
-
-        self.catalogue_listbox.bind("<ButtonRelease-1>", lambda e:[self.update_selected_catalogue(), self.update_item_list()]) #Updates catalogue details when selected
+        self.no_items.grid(row=3, column=0, sticky=W)
+        self.no_items_entry.grid(row=3, column=3, sticky=E)
+        self.archived.grid(row=4, column=0, sticky=W)
+        self.archived_entry.grid(row=4, column=3, sticky=W)
 
     def close_windows(self):
         self.master.quit()
 
     def toolbar(self):
-        toolbar = Menu(self.master)
-        self.master.config(menu=toolbar)
+        self.toolbar_menu = Menu(self.master)
+        self.master.config(menu=self.toolbar_menu)
 
         #File Menu
-        fileMenu = Menu(toolbar)
-        toolbar.add_cascade(label="File", menu=fileMenu)
-        fileMenu.add_command(label="Exit", command=self.close_windows)
+        self.fileMenu = Menu(self.toolbar_menu)
+        self.toolbar_menu.add_cascade(label="File", menu=self.fileMenu)
+        self.fileMenu.add_command(label="Exit", command=self.close_windows)
         #Catalogue
-        catalogueMenu = Menu(toolbar)
-        toolbar.add_cascade(label="Catalogue", menu=catalogueMenu)
-        catalogueMenu.add_command(label="Create", command=self.create_ctlg_popup)
-        catalogueMenu.add_command(label="Delete", command=self.delete_ctlg)
+        self.catalogueMenu = Menu(self.toolbar_menu)
+        self.toolbar_menu.add_cascade(label="Catalogue", menu=self.catalogueMenu)
+        self.catalogueMenu.add_command(label="Create", command=self.create_ctlg_popup)
+        self.catalogueMenu.add_command(label="Delete", command=self.delete_ctlg)
         #Item
-        itemMenu = Menu(toolbar)
-        toolbar.add_cascade(label="Item", menu=itemMenu)
-        itemMenu.add_command(label="Create", command=self.create_item_popup)
-        itemMenu.add_command(label="Delete", command=self.delete_ctlg)
+        self.itemMenu = Menu(self.toolbar_menu)
+        self.toolbar_menu.add_cascade(label="Item", menu=self.itemMenu)
+        self.itemMenu.add_command(label="Create", command=self.create_item_popup)
+        self.itemMenu.add_command(label="Delete", command=self.delete_item)
         #User Menu
-        userMenu = Menu(toolbar)
-        toolbar.add_cascade(label="User", menu=userMenu)
-        userMenu.add_command(label=self.current_user)
-        userMenu.add_separator()
-        userMenu.add_command(label="Preferences", command=self.user_preferences)
+        self.userMenu = Menu(self.toolbar_menu)
+        self.toolbar_menu.add_cascade(label="User", menu=self.userMenu)
+        self.userMenu.add_command(label=self.current_user)
+        self.userMenu.add_separator()
+        self.userMenu.add_command(label="Preferences", command=self.user_preferences)
 
     def delete_ctlg(self):
         selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection()[0])[0]
@@ -278,7 +360,10 @@ class MainProgram:
         self.update_item_list()
 
     def user_preferences(self):
-        pass
+        popup_window = PreferencesPopup(self.master)
+        self.userMenu.entryconfig(2, state=DISABLED)
+        self.master.wait_window(popup_window.top)
+        self.userMenu.entryconfig(2, state=NORMAL)
 
 class CreateCtlgPopup(object):
     def __init__(self,master):
@@ -313,6 +398,19 @@ class CreateItemPopup(object):
         self.create_ctlg_btn.grid(row=3, column=1, sticky=W)
     def destroy_window(self):
         self.value = [self.item_name_entry.get(), self.description_entry.get()]
+        self.top.destroy()
+
+class PreferencesPopup(object):
+    def __init__(self, master):
+        top = self.top = Toplevel(master)
+        top.title("Preferences")
+        self.info_label = Label(top,text="Catalogue Name: ")
+        self.info_label.grid(row=0, column=0)
+        self.ctlg_name_entry = Entry(top)
+        self.ctlg_name_entry.grid(row=0, column=2, columnspan=2)
+        self.create_ctlg_btn = Button(top,text='Create Catalogue',command=self.destroy_window)
+        self.create_ctlg_btn.grid(row=2, column=2, sticky=W)
+    def destroy_window(self):
         self.top.destroy()
 
 root = Tk()
