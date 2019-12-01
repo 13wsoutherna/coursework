@@ -85,13 +85,12 @@ class MainProgram:
         self.current_user = current_user
         self.master.title(self.current_user)
         self.toolbar()
-        self.colour_1 = "grey"
         self.right_panel_state = True
         self.master.protocol("WM_DELETE_WINDOW", self.close_windows)
         c.execute("CREATE TABLE IF NOT EXISTS Catalogues (CatalogueID INTEGER PRIMARY KEY, CatalogueName TEXT, OwnerID INTEGER, DateCreated DATE, Archived BIT, FOREIGN KEY(OwnerID) REFERENCES Accounts(UserID))") #Create catalogues table and set UserID/OwnerID as foreign key
         c.execute("CREATE TABLE IF NOT EXISTS Items (ItemID INTEGER PRIMARY KEY, ItemName TEXT, Description TEXT, Catalogue TEXT, DateCreated DATE)")
 
-        self.left_panel = Frame(self.master,bg=self.colour_1, highlightbackground="black", highlightthickness=1) #Creates two frames to fill the left and right of the window
+        self.left_panel = Frame(self.master,bg="grey", highlightbackground="black", highlightthickness=1) #Creates two frames to fill the left and right of the window
         self.right_panel = Frame(self.master,bg="white", highlightbackground="black", highlightthickness=1)
 
         self.left_panel.grid(row=0,column=0, sticky='nsew')
@@ -198,12 +197,12 @@ class MainProgram:
         self.update_item_list()
 
     def catalogue_list(self):
-        self.header_catalogues = Label(self.left_panel, text="Catalogues", font=("Helvetica", 54), bg=self.colour_1)
-        self.indexes_catalogues = Text(self.left_panel, width=4, font=("Helvetica", 15), height=1, background=self.colour_1, borderwidth=0, highlightthickness=0)
-        self.catalogue_listbox = Listbox(self.left_panel, selectmode=SINGLE, font=("Helvetica", 15), height=1, bg=self.colour_1, borderwidth=0, highlightthickness=0) #Create list box to hold catalogues
+        self.header_catalogues = Label(self.left_panel, text="Catalogues", font=("Helvetica", 54), bg="grey")
+        self.indexes_catalogues = Text(self.left_panel, width=4, font=("Helvetica", 15), height=1, background="grey", borderwidth=0, highlightthickness=0)
+        self.catalogue_listbox = Listbox(self.left_panel, selectmode=SINGLE, font=("Helvetica", 15), height=1, bg="grey", borderwidth=0, highlightthickness=0) #Create list box to hold catalogues
         self.update_catalogue_list() #Updates the index list as well as catalogues
         self.header_catalogues.grid(row=0, column=0, columnspan=2, sticky=W)
-        self.indexes_catalogues.grid(row=1, column=0, sticky=N)
+        self.indexes_catalogues.grid(row=1, column=0, sticky=NE)
         self.catalogue_listbox.grid(row=1, column=1, sticky=NW)
         self.catalogue_listbox.configure(exportselection = False)
         """ c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = '"+current_user+"'") #Select catalogue name and the owner's username
@@ -222,22 +221,23 @@ class MainProgram:
         
         self.create_ctlg_btn = Button(self.left_panel,text="+", font=("Helvetica", 30), command=self.create_ctlg_popup, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.delete_ctlg_btn = Button(self.left_panel, text="-", font=("Helvetica", 30), command=self.delete_ctlg, height = 1, width = 2, borderwidth=0, highlightthickness=0)
-        self.create_ctlg_btn.grid(row=2, column=0)
+        self.create_ctlg_btn.grid(row=2, column=0, sticky=E)
         self.delete_ctlg_btn.grid(row=2, column=1, sticky=W)
 
     def item_list(self):
-        self.header_items = Label(self.left_panel, text="Items", font=("Helvetica", 54), bg=self.colour_1)
-        self.indexes_items = Text(self.left_panel, width=4, font=("Helvetica", 15), height=1, background=self.colour_1, borderwidth=0, highlightthickness=0)
-        self.item_listbox = Listbox(self.left_panel, selectmode=SINGLE, font=("Helvetica", 15), height=1, bg=self.colour_1, borderwidth=0, highlightthickness=0) #Create list box to hold catalogues
-        self.header_items.grid(row=0, column=3, sticky=W)
-        self.indexes_items.grid(row=1, column=2, sticky=N)
-        self.item_listbox.grid(row=1, column=3, sticky=NW)
+        self.header_items = Label(self.left_panel, text="Items", font=("Helvetica", 54), bg="grey")
+        self.indexes_items = Text(self.left_panel, width=4, font=("Helvetica", 15), height=1, background="grey", borderwidth=0, highlightthickness=0)
+        self.item_listbox = Listbox(self.left_panel, selectmode=SINGLE, font=("Helvetica", 15), height=1, bg="grey", borderwidth=0, highlightthickness=0) #Create list box to hold catalogues
+        self.left_panel.grid_columnconfigure(2, minsize=75)
+        self.header_items.grid(row=0, column=3, sticky=W, columnspan=2)
+        self.indexes_items.grid(row=1, column=3, sticky=NE)
+        self.item_listbox.grid(row=1, column=4, sticky=NW)
         self.item_listbox.configure(exportselection = False)
 
         self.create_item_btn = Button(self.left_panel,text="+", font=("Helvetica", 30), command=self.create_item_popup, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.delete_item_btn = Button(self.left_panel, text="-", font=("Helvetica", 30), command=self.delete_item, height = 1, width = 2, borderwidth=0, highlightthickness=0)
-        self.create_item_btn.grid(row=2, column=2)
-        self.delete_item_btn.grid(row=2, column=3, sticky=W)
+        self.create_item_btn.grid(row=2, column=3, sticky=E)
+        self.delete_item_btn.grid(row=2, column=4, sticky=W)
 
     def update_item_list(self):
         self.indexes_items.configure(state=NORMAL)
@@ -364,6 +364,8 @@ class MainProgram:
         self.userMenu.entryconfig(2, state=DISABLED)
         self.master.wait_window(popup_window.top)
         self.userMenu.entryconfig(2, state=NORMAL)
+        print(popup_window.value[0])
+        self.left_panel.configure(bg=popup_window.value[0])
 
 class CreateCtlgPopup(object):
     def __init__(self,master):
@@ -383,19 +385,19 @@ class CreateItemPopup(object):
     def __init__(self,master):
         top = self.top = Toplevel(master)
         top.title("Create Item")
-        self.info_label = Label(top, text="Item Name: ")
-        self.info_label.grid(row=0, column=0)
+        info_label = Label(top, text="Item Name: ")
+        info_label.grid(row=0, column=0)
         self.item_name_entry = Entry(top)
         self.item_name_entry.grid(row=0, column=1, columnspan=2)
 
-        self.description_label = Label(top, text="Description: ")
-        self.description_label.grid(row=1, column=0)
+        description_label = Label(top, text="Description: ")
+        description_label.grid(row=1, column=0)
 
         self.description_entry = Entry(top)
         self.description_entry.grid(row=1, column=1, columnspan=2)
 
-        self.create_ctlg_btn = Button(top,text='Create Item',command=self.destroy_window)
-        self.create_ctlg_btn.grid(row=3, column=1, sticky=W)
+        create_ctlg_btn = Button(top,text='Create Item',command=self.destroy_window)
+        create_ctlg_btn.grid(row=3, column=1, sticky=W)
     def destroy_window(self):
         self.value = [self.item_name_entry.get(), self.description_entry.get()]
         self.top.destroy()
@@ -404,13 +406,34 @@ class PreferencesPopup(object):
     def __init__(self, master):
         top = self.top = Toplevel(master)
         top.title("Preferences")
-        self.info_label = Label(top,text="Catalogue Name: ")
-        self.info_label.grid(row=0, column=0)
-        self.ctlg_name_entry = Entry(top)
-        self.ctlg_name_entry.grid(row=0, column=2, columnspan=2)
-        self.create_ctlg_btn = Button(top,text='Create Catalogue',command=self.destroy_window)
-        self.create_ctlg_btn.grid(row=2, column=2, sticky=W)
+
+        colours = [
+            "white",
+            "red",
+            "orange",
+            "yellow",
+            "green",
+            "blue",
+            "indigo",
+            "violet",
+            "grey",
+            "black"
+        ]
+
+        self.colour1 = StringVar(top)
+        self.colour1.set(colours[8])
+
+        self.colour1_label = Label(top, text="Colour 1:")
+        self.colour1_dropdown = OptionMenu(top, self.colour1, *colours)
+
+        self.save_btn = Button(top, text="Save", command=self.destroy_window)
+
+        top.grid_columnconfigure(1, minsize=50)
+        self.colour1_label.grid(row=0, column=0)
+        self.colour1_dropdown.grid(row=0, column=2)
+        self.save_btn.grid(row=2)
     def destroy_window(self):
+        self.value = [self.colour1.get()]
         self.top.destroy()
 
 root = Tk()
