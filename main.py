@@ -200,7 +200,6 @@ class MainProgram:
         self.header_catalogues = Label(self.left_panel, text="Catalogues", font=("Helvetica", 54), bg="grey")
         self.indexes_catalogues = Text(self.left_panel, width=4, font=("Helvetica", 15), height=1, background="grey", borderwidth=0, highlightthickness=0)
         self.catalogue_listbox = Listbox(self.left_panel, selectmode=SINGLE, font=("Helvetica", 15), height=1, bg="grey", borderwidth=0, highlightthickness=0) #Create list box to hold catalogues
-        self.update_catalogue_list() #Updates the index list as well as catalogues
         self.header_catalogues.grid(row=0, column=0, columnspan=2, sticky=W)
         self.indexes_catalogues.grid(row=1, column=0, sticky=NE)
         self.catalogue_listbox.grid(row=1, column=1, sticky=NW)
@@ -221,8 +220,14 @@ class MainProgram:
         
         self.create_ctlg_btn = Button(self.left_panel,text="+", font=("Helvetica", 30), command=self.create_ctlg_popup, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.delete_ctlg_btn = Button(self.left_panel, text="-", font=("Helvetica", 30), command=self.delete_ctlg, height = 1, width = 2, borderwidth=0, highlightthickness=0)
+        self.sort_ctlg_option = StringVar(self.left_panel)
+        self.sort_ctlg_option.set("-")
+        self.sort_ctlgs_by = OptionMenu(self.left_panel, self.sort_ctlg_option, "Index", "ABC", "Date", command=lambda e: self.update_catalogue_list()) #Drop down menu for sorting
         self.create_ctlg_btn.grid(row=2, column=0, sticky=E)
         self.delete_ctlg_btn.grid(row=2, column=1, sticky=W)
+        self.sort_ctlgs_by.grid(row=2, column=1)
+
+        self.update_catalogue_list() #Updates the index list as well as catalogues
 
     def item_list(self):
         self.header_items = Label(self.left_panel, text="Items", font=("Helvetica", 54), bg="grey")
@@ -261,7 +266,16 @@ class MainProgram:
         self.indexes_catalogues.delete('1.0', END) #Delete all contents from indexes and listbox
         self.catalogue_listbox.delete(0, END)
         self.indexes_catalogues.tag_configure("center", justify=CENTER)
-        c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = '"+self.current_user+"'") #Select catalogue name and the owner's username
+        if self.sort_ctlg_option.get() == "ABC": 
+            sort_by = "Catalogues.CatalogueName"
+            c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = ? ORDER BY Catalogues.CatalogueName ASC", (self.current_user,))
+        elif self.sort_ctlg_option.get() == "Date":
+            sort_by = "Catalogues.DateCreated"
+            c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = ? ORDER BY Catalogues.DateCreated ASC", (self.current_user,))
+        else:
+            sort_by = "Catalogues.CatalogueID"
+            c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = ? ORDER BY Catalogues.CatalogueID ASC", (self.current_user,))
+
         result = c.fetchall()
         counter = 1
         for i in result: #Inserts catalogues owned by current user into the listbox
@@ -330,6 +344,7 @@ class MainProgram:
         self.fileMenu = Menu(self.toolbar_menu)
         self.toolbar_menu.add_cascade(label="File", menu=self.fileMenu)
         self.fileMenu.add_command(label="Exit", command=self.close_windows)
+        self.fileMenu.add_command(label="Update", command=self.update_catalogue_list)
         #Catalogue
         self.catalogueMenu = Menu(self.toolbar_menu)
         self.toolbar_menu.add_cascade(label="Catalogue", menu=self.catalogueMenu)
@@ -364,8 +379,22 @@ class MainProgram:
         self.userMenu.entryconfig(2, state=DISABLED)
         self.master.wait_window(popup_window.top)
         self.userMenu.entryconfig(2, state=NORMAL)
-        print(popup_window.value[0])
+
+        """ self.left_panel.configure(bg=popup_window.value[0])
+        self.header_catalogues.configure(bg=popup_window.value[0])
+        self.indexes_catalogues.configure(bg=popup_window.value[0])
+        self.catalogue_listbox.configure(bg=popup_window.value[0])
+        self.header_items.configure(bg=popup_window.value[0])
+        self.indexes_items.configure(bg=popup_window.value[0])
+        self.item_listbox.configure(bg=popup_window.value[0]) """
+
         self.left_panel.configure(bg=popup_window.value[0])
+        for child in self.left_panel.winfo_children(): #Sets background colour of all children in frame
+            child.configure(bg=popup_window.value[0])
+
+        self.right_panel.configure(bg=popup_window.value[1])
+        for child in self.right_panel.winfo_children(): 
+            child.configure(bg=popup_window.value[1])
 
 class CreateCtlgPopup(object):
     def __init__(self,master):
@@ -422,18 +451,24 @@ class PreferencesPopup(object):
 
         self.colour1 = StringVar(top)
         self.colour1.set(colours[8])
+        self.colour2 = StringVar(top)
+        self.colour2.set(colours[0])
 
         self.colour1_label = Label(top, text="Colour 1:")
         self.colour1_dropdown = OptionMenu(top, self.colour1, *colours)
+        self.colour2_label = Label(top, text="Colour 2:")
+        self.colour2_dropdown = OptionMenu(top, self.colour2, *colours)
 
         self.save_btn = Button(top, text="Save", command=self.destroy_window)
 
         top.grid_columnconfigure(1, minsize=50)
         self.colour1_label.grid(row=0, column=0)
         self.colour1_dropdown.grid(row=0, column=2)
+        self.colour2_label.grid(row=1, column=0)
+        self.colour2_dropdown.grid(row=1, column=2)
         self.save_btn.grid(row=2)
     def destroy_window(self):
-        self.value = [self.colour1.get()]
+        self.value = [self.colour1.get(), self.colour2.get()]
         self.top.destroy()
 
 root = Tk()
