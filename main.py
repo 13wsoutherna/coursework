@@ -141,8 +141,9 @@ class MainProgram:
 
     def update_selected_item(self):
         selection = self.item_listbox.get(self.item_listbox.curselection()[0])[0] #Gets the catalogue that is selected
+        ctlg_selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection()[0])[0]
         if selection is not "" and self.right_panel_state is False:
-            c.execute("SELECT Description, Catalogue, DateCreated, ItemID FROM Items WHERE ItemName = ?", (selection,))
+            c.execute("SELECT Description, Catalogue, DateCreated, ItemID FROM Items WHERE ItemName = ? AND Catalogue = ?", (selection, ctlg_selection))
             item_details = c.fetchall()[0]
             self.item_name.delete(0,50)
             self.item_name.insert(0, selection)
@@ -156,6 +157,17 @@ class MainProgram:
 
             self.item_catalogue_entry.bind("<Key>", lambda e: "break")
             self.item_date_created.bind("<Key>", lambda e: "break")
+
+    def update_catalogue_details(self):
+        old_ctlg_name = self.current_ctlgname
+        new_ctlg_name = self.catalogue_name.get() #Retreives values from respective widgets
+        new_archived = self.archived_state.get()
+        
+        c.execute("UPDATE Catalogues SET CatalogueName = ?, Archived = ? WHERE CatalogueID = ?", (new_ctlg_name, new_archived, self.current_ctlgid)) #Updates the table replacing the updated values
+        con.commit()
+        c.execute("UPDATE Items SET Catalogue = ? WHERE Catalogue = ?", (new_ctlg_name, old_ctlg_name))
+        con.commit()
+        self.update_catalogue_list()
 
     def update_item_details(self):
         new_item_name = self.item_name.get()
@@ -221,7 +233,7 @@ class MainProgram:
         self.create_ctlg_btn = Button(self.left_panel,text="+", font=("Helvetica", 30), command=self.create_ctlg_popup, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.delete_ctlg_btn = Button(self.left_panel, text="-", font=("Helvetica", 30), command=self.delete_ctlg, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.sort_ctlg_option = StringVar(self.left_panel)
-        self.sort_ctlg_option.set("-")
+        self.sort_ctlg_option.set("Index") #Sets the default option for the dropdown menu
         self.sort_ctlgs_by = OptionMenu(self.left_panel, self.sort_ctlg_option, "Index", "ABC", "Date", command=lambda e: self.update_catalogue_list()) #Drop down menu for sorting
         self.create_ctlg_btn.grid(row=2, column=0, sticky=E)
         self.delete_ctlg_btn.grid(row=2, column=1, sticky=W)
@@ -239,10 +251,15 @@ class MainProgram:
         self.item_listbox.grid(row=1, column=4, sticky=NW)
         self.item_listbox.configure(exportselection = False)
 
+        self.sort_item_option = StringVar(self.left_panel)
+        self.sort_item_option.set("Index") #Sets the default option for the dropdown menu
+        self.sort_item_by = OptionMenu(self.left_panel, self.sort_item_option, "Index", "ABC", "Date", command=lambda e: self.update_item_list()) #Drop down menu for sorting
+
         self.create_item_btn = Button(self.left_panel,text="+", font=("Helvetica", 30), command=self.create_item_popup, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.delete_item_btn = Button(self.left_panel, text="-", font=("Helvetica", 30), command=self.delete_item, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.create_item_btn.grid(row=2, column=3, sticky=E)
         self.delete_item_btn.grid(row=2, column=4, sticky=W)
+        self.sort_item_by.grid(row=2, column=4)
 
     def update_item_list(self):
         self.indexes_items.configure(state=NORMAL)
@@ -250,7 +267,14 @@ class MainProgram:
         self.item_listbox.delete(0, END)
         self.indexes_items.tag_configure("center", justify=CENTER)
         selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection()[0])[0]
-        c.execute("SELECT ItemName FROM Items WHERE Catalogue = '"+selection+"'")
+        
+        if self.sort_item_option.get() == "ABC":
+            c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY ItemName ASC", (selection,))
+        elif self.sort_item_option.get() == "Date":
+            c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY DateCreated ASC", (selection,))
+        else:
+            c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY ItemID ASC", (selection,))
+
         result = c.fetchall()
         counter = 1
         for i in result:
@@ -266,14 +290,11 @@ class MainProgram:
         self.indexes_catalogues.delete('1.0', END) #Delete all contents from indexes and listbox
         self.catalogue_listbox.delete(0, END)
         self.indexes_catalogues.tag_configure("center", justify=CENTER)
-        if self.sort_ctlg_option.get() == "ABC": 
-            sort_by = "Catalogues.CatalogueName"
+        if self.sort_ctlg_option.get() == "ABC": #Retrieves the dropdown variable and compares it with the options
             c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = ? ORDER BY Catalogues.CatalogueName ASC", (self.current_user,))
         elif self.sort_ctlg_option.get() == "Date":
-            sort_by = "Catalogues.DateCreated"
             c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = ? ORDER BY Catalogues.DateCreated ASC", (self.current_user,))
         else:
-            sort_by = "Catalogues.CatalogueID"
             c.execute("SELECT Catalogues.CatalogueName FROM Catalogues INNER JOIN Accounts ON Catalogues.OwnerID = Accounts.UserID WHERE Accounts.Username = ? ORDER BY Catalogues.CatalogueID ASC", (self.current_user,))
 
         result = c.fetchall()
@@ -292,7 +313,7 @@ class MainProgram:
         if selection is not "" and self.right_panel_state is True:
             self.catalogue_name.delete(0,50)
             self.catalogue_name.insert(0, selection)
-            c.execute("SELECT DateCreated, Archived FROM Catalogues WHERE CatalogueName = ?", (selection,))
+            c.execute("SELECT DateCreated, Archived, CatalogueID, CatalogueName FROM Catalogues WHERE CatalogueName = ?", (selection,))
             result = c.fetchall()[0]
             #self.date_created.configure(state=NORMAL)
             self.date_created.delete(0,50)
@@ -301,6 +322,8 @@ class MainProgram:
                 self.archived_entry.select()
             else:
                 self.archived_entry.deselect()
+            self.current_ctlgid = result[2]
+            self.current_ctlgname = result[3]
             c.execute("SELECT COUNT(*) FROM Items WHERE Catalogue = ?", (selection,))
             self.no_items_entry.delete(0,50)
             self.no_items_entry.insert(0, c.fetchone()[0])
@@ -321,7 +344,9 @@ class MainProgram:
         self.no_items = Label(self.right_panel, text="No. of Items:")
         self.no_items_entry = Entry(self.right_panel)
         self.archived = Label(self.right_panel, text="Archived:")
-        self.archived_entry = Checkbutton(self.right_panel)
+        self.archived_state = IntVar(self.right_panel)
+        self.archived_entry = Checkbutton(self.right_panel, variable=self.archived_state)
+        self.update_ctlg_btn = Button(self.right_panel, text="Update", command=self.update_catalogue_details)
         
         self.header_details.grid(row=0, column=0, columnspan=1)
         self.label_catalogue_name.grid(row=1, column=0, sticky=W)
@@ -332,6 +357,7 @@ class MainProgram:
         self.no_items_entry.grid(row=3, column=3, sticky=E)
         self.archived.grid(row=4, column=0, sticky=W)
         self.archived_entry.grid(row=4, column=3, sticky=W)
+        self.update_ctlg_btn.grid(row=5, column=3)
 
     def close_windows(self):
         self.master.quit()
@@ -366,7 +392,10 @@ class MainProgram:
         selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection()[0])[0]
         c.execute("DELETE FROM Catalogues WHERE CatalogueName = ?", (selection,)) #Delete selected catalogue from database
         con.commit()
+        c.execute("DELETE FROM Items WHERE Catalogue = ?", (selection,))
+        con.commit()
         self.update_catalogue_list()
+        self.update_item_list()
     
     def delete_item(self):
         selection = self.item_listbox.get(self.item_listbox.curselection()[0])[0]
