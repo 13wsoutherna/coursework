@@ -87,6 +87,11 @@ class MainProgram:
         self.toolbar()
         self.right_panel_state = True
         self.master.protocol("WM_DELETE_WINDOW", self.close_windows)
+        self.theme = [
+            "Helvetica",
+            "black",
+            "white"
+        ]
         c.execute("CREATE TABLE IF NOT EXISTS Catalogues (CatalogueID INTEGER PRIMARY KEY, CatalogueName TEXT, OwnerID INTEGER, DateCreated DATE, Archived BIT, FOREIGN KEY(OwnerID) REFERENCES Accounts(UserID))") #Create catalogues table and set UserID/OwnerID as foreign key
         c.execute("CREATE TABLE IF NOT EXISTS Items (ItemID INTEGER PRIMARY KEY, ItemName TEXT, Description TEXT, Catalogue TEXT, DateCreated DATE)")
 
@@ -111,15 +116,15 @@ class MainProgram:
             child.destroy()
         self.header_item_details = Label(self.right_panel, text="Details", font=("Helvetica", 54))
         self.label_item_name = Label(self.right_panel, text="Item Name:")
-        self.item_name = Entry(self.right_panel)
+        self.item_name = Entry(self.right_panel, borderwidth=0, highlightbackground="BLACK")
         self.item_name.insert(0, "-")
 
         self.item_catalogue = Label(self.right_panel, text="Catalogue:")
-        self.item_catalogue_entry = Entry(self.right_panel)
+        self.item_catalogue_entry = Entry(self.right_panel, borderwidth=0, highlightbackground="BLACK")
         self.item_catalogue_entry.insert(0, "-")
         
         self.label_item_date = Label(self.right_panel, text="Date Created:")
-        self.item_date_created = Entry(self.right_panel)
+        self.item_date_created = Entry(self.right_panel, borderwidth=0, highlightbackground="BLACK")
         self.item_date_created.insert(0, "-")
 
         self.item_description = Label(self.right_panel, text="Description:")
@@ -138,6 +143,14 @@ class MainProgram:
         self.item_description.grid(row=4, column=0, sticky=NW)
         self.item_description_entry.grid(row=4, column=3, sticky=W)
         self.update_item_btn.grid(row=5, column=3)
+
+        self.header_item_details.configure(font=(self.theme[0], 54), fg=self.theme[1])
+        counter = 0
+        for child in self.right_panel.winfo_children():
+            child.configure(bg=self.theme[2])
+            if counter > 0 and counter < 9:
+                child.configure(font=(self.theme[0], 13), fg=self.theme[1])
+            counter += 1
 
     def update_selected_item(self):
         selection = self.item_listbox.get(self.item_listbox.curselection()[0])[0] #Gets the catalogue that is selected
@@ -327,7 +340,8 @@ class MainProgram:
             c.execute("SELECT COUNT(*) FROM Items WHERE Catalogue = ?", (selection,))
             self.no_items_entry.delete(0,50)
             self.no_items_entry.insert(0, c.fetchone()[0])
-            self.date_created.bind("<Key>", lambda e: "break")
+            self.date_created.bind("<Key>", lambda e: "break") #Prevents the entry from editting
+            self.no_items_entry.bind("<Key>", lambda e: "break")
             #self.date_created.configure(state=DISABLED) 
         
     def catalogue_details(self):
@@ -336,13 +350,14 @@ class MainProgram:
             child.destroy()
         self.header_details = Label(self.right_panel, text="Details", font=("Helvetica", 54)) #Creating headers
         self.label_catalogue_name = Label(self.right_panel, text="Catalogue Name:")
-        self.catalogue_name = Entry(self.right_panel) #Entry to hold catalogue details
+        self.catalogue_name = Entry(self.right_panel, borderwidth=0, highlightbackground="BLACK") #Entry to hold catalogue details
         self.catalogue_name.insert(0, "-")
         self.label_date = Label(self.right_panel, text="Date Created:")
-        self.date_created = Entry(self.right_panel)
+        self.date_created = Entry(self.right_panel, borderwidth=0, highlightbackground="BLACK")
         self.date_created.insert(0, "-")
         self.no_items = Label(self.right_panel, text="No. of Items:")
-        self.no_items_entry = Entry(self.right_panel)
+        self.no_items_entry = Entry(self.right_panel, borderwidth=0, highlightbackground="BLACK")
+        self.no_items_entry.insert(0, "-")
         self.archived = Label(self.right_panel, text="Archived:")
         self.archived_state = IntVar(self.right_panel)
         self.archived_entry = Checkbutton(self.right_panel, variable=self.archived_state)
@@ -358,6 +373,14 @@ class MainProgram:
         self.archived.grid(row=4, column=0, sticky=W)
         self.archived_entry.grid(row=4, column=3, sticky=W)
         self.update_ctlg_btn.grid(row=5, column=3)
+
+        self.header_details.configure(font=(self.theme[0], 54), fg=self.theme[1])
+        counter = 0
+        for child in self.right_panel.winfo_children():
+            child.configure(bg=self.theme[2])
+            if counter > 0 and counter < 8:
+                child.configure(font=(self.theme[0], 13), fg=self.theme[1])
+            counter += 1
 
     def close_windows(self):
         self.master.quit()
@@ -404,9 +427,9 @@ class MainProgram:
         self.update_item_list()
 
     def user_preferences(self):
-        popup_window = PreferencesPopup(self.master)
+        popup_window = PreferencesPopup(self.master) #Create popup
         self.userMenu.entryconfig(2, state=DISABLED)
-        self.master.wait_window(popup_window.top)
+        self.master.wait_window(popup_window.top) #Disable prefences button while window is open
         self.userMenu.entryconfig(2, state=NORMAL)
 
         """ self.left_panel.configure(bg=popup_window.value[0])
@@ -420,10 +443,27 @@ class MainProgram:
         self.left_panel.configure(bg=popup_window.value[0])
         for child in self.left_panel.winfo_children(): #Sets background colour of all children in frame
             child.configure(bg=popup_window.value[0])
+        
+        self.header_catalogues.configure(font=(popup_window.value[4], 54), fg=popup_window.value[2])
+        self.header_items.configure(font=(popup_window.value[4], 54), fg=popup_window.value[2])
+        self.indexes_catalogues.configure(font=(popup_window.value[4], 15), fg=popup_window.value[2])
+        self.catalogue_listbox.configure(font=(popup_window.value[4], 15), fg=popup_window.value[2])
+        self.indexes_items.configure(font=(popup_window.value[4], 15), fg=popup_window.value[2])
+        self.item_listbox.configure(font=(popup_window.value[4], 15), fg=popup_window.value[2])
 
         self.right_panel.configure(bg=popup_window.value[1])
+        counter = 0
         for child in self.right_panel.winfo_children(): 
             child.configure(bg=popup_window.value[1])
+            if counter > 0 and counter < 8:
+                child.configure(font=(popup_window.value[4], 13), fg=popup_window.value[3])
+            counter += 1
+        
+        self.theme = [
+            popup_window.value[4],
+            popup_window.value[3],
+            popup_window.value[1]
+        ]
 
 class CreateCtlgPopup(object):
     def __init__(self,master):
@@ -465,7 +505,7 @@ class PreferencesPopup(object):
         top = self.top = Toplevel(master)
         top.title("Preferences")
 
-        colours = [
+        colours = [ #List holding all dropdown menu options for colours
             "white",
             "red",
             "orange",
@@ -478,26 +518,54 @@ class PreferencesPopup(object):
             "black"
         ]
 
-        self.colour1 = StringVar(top)
+        fonts = [
+            "Helvetica",
+            "Courier New",
+            "Comic Sans MS",
+            "Times New Roman",
+            "Verdana"
+        ]
+
+        self.colour1 = StringVar(top) #Default dropdown menu value
         self.colour1.set(colours[8])
         self.colour2 = StringVar(top)
         self.colour2.set(colours[0])
+        self.text_colour1 = StringVar(top)
+        self.text_colour1.set(colours[9])
+        self.text_colour2 = StringVar(top)
+        self.text_colour2.set(colours[9])
+        self.font = StringVar(top)
+        self.font.set(fonts[0])
 
         self.colour1_label = Label(top, text="Colour 1:")
         self.colour1_dropdown = OptionMenu(top, self.colour1, *colours)
         self.colour2_label = Label(top, text="Colour 2:")
         self.colour2_dropdown = OptionMenu(top, self.colour2, *colours)
 
-        self.save_btn = Button(top, text="Save", command=self.destroy_window)
+        self.text_colour1_label = Label(top, text="Text Colour 1:")
+        self.text_colour1_dropdown = OptionMenu(top, self.text_colour1, *colours)
+        self.text_colour2_label = Label(top, text="Text Colour 2:")
+        self.text_colour2_dropdown = OptionMenu(top, self.text_colour2, *colours)
+
+        self.font_label = Label(top, text="Font:")
+        self.font_dropdown = OptionMenu(top, self.font, *fonts)
+
+        self.save_btn = Button(top, text="Save", command=self.destroy_window, width=8)
 
         top.grid_columnconfigure(1, minsize=50)
-        self.colour1_label.grid(row=0, column=0)
+        self.colour1_label.grid(row=0, column=0, sticky=W)
         self.colour1_dropdown.grid(row=0, column=2)
-        self.colour2_label.grid(row=1, column=0)
+        self.colour2_label.grid(row=1, column=0, sticky=W)
         self.colour2_dropdown.grid(row=1, column=2)
-        self.save_btn.grid(row=2)
+        self.text_colour1_label.grid(row=2, column=0, sticky=W)
+        self.text_colour1_dropdown.grid(row=2, column=2)
+        self.text_colour2_label.grid(row=3, column=0, sticky=W)
+        self.text_colour2_dropdown.grid(row=3, column=2)
+        self.font_label.grid(row=4, column=0, sticky=W)
+        self.font_dropdown.grid(row=4, column=2)
+        self.save_btn.grid(row=5, columnspan=2, sticky=E)
     def destroy_window(self):
-        self.value = [self.colour1.get(), self.colour2.get()]
+        self.value = [self.colour1.get(), self.colour2.get(), self.text_colour1.get(), self.text_colour2.get(), self.font.get()]
         self.top.destroy()
 
 root = Tk()
