@@ -277,10 +277,17 @@ class MainProgram:
 
     def update_item_list(self):
         self.indexes_items.configure(state=NORMAL)
+        selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection())
+        c.execute("SELECT Archived FROM Catalogues WHERE CatalogueName = ?", (selection,))
+        archived = c.fetchall()[0][0]
+        if archived == 0:
+            self.item_listbox.configure(state=NORMAL)
+            self.create_item_btn.configure(state=NORMAL)
+            self.delete_item_btn.configure(state=NORMAL)
+            self.sort_item_by.configure(state=NORMAL)
         self.indexes_items.delete('1.0', END)
         self.item_listbox.delete(0, END)
         self.indexes_items.tag_configure("center", justify=CENTER)
-        selection = self.catalogue_listbox.get(self.catalogue_listbox.curselection())
         
         if self.sort_item_option.get() == "ABC":
             c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY ItemName ASC", (selection,))
@@ -297,6 +304,13 @@ class MainProgram:
             self.indexes_items.configure(height=counter)
             self.item_listbox.configure(heigh=counter)
             counter+=1
+        
+        if archived == 1:
+            self.item_listbox.configure(state=DISABLED)
+            self.create_item_btn.configure(state=DISABLED)
+            self.delete_item_btn.configure(state=DISABLED)
+            self.sort_item_by.configure(state=DISABLED)
+
         self.indexes_items.configure(state=DISABLED)
 
     def update_catalogue_list(self):
