@@ -5,8 +5,8 @@ import datetime
 sqlite_file = '/Users/adam/Documents/Python/Coursework Project/project.db'
 con = sqlite3.connect(sqlite_file)
 c = con.cursor()
-current_user = "username1"
-skip_login = True
+current_user = "Adam Southern"
+skip_login = True #Skip authentication for easier testing
 
 class LoginScreen():
     def __init__(self, master):
@@ -271,9 +271,14 @@ class MainProgram:
 
         self.create_item_btn = Button(self.left_panel,text="+", font=("Helvetica", 30), command=self.create_item_popup, height = 1, width = 2, borderwidth=0, highlightthickness=0)
         self.delete_item_btn = Button(self.left_panel, text="-", font=("Helvetica", 30), command=self.delete_item, height = 1, width = 2, borderwidth=0, highlightthickness=0)
-        self.create_item_btn.grid(row=2, column=3, sticky=E)
-        self.delete_item_btn.grid(row=2, column=4, sticky=W)
+        self.create_item_btn.grid(row=2, column=3, sticky=NE)
+        self.delete_item_btn.grid(row=2, column=4, sticky=NW)
         self.sort_item_by.grid(row=2, column=4)
+
+        self.search_text = Entry(self.left_panel, borderwidth=0, width=10)
+        self.search_text.grid(row=3, column=3, columnspan=2, sticky=W)
+        self.search_button = Button(self.left_panel, text="search", command=lambda: self.update_item_list())
+        self.search_button.grid(row=3, column=4)
 
     def update_item_list(self):
         self.indexes_items.configure(state=NORMAL)
@@ -289,7 +294,9 @@ class MainProgram:
         self.item_listbox.delete(0, END)
         self.indexes_items.tag_configure("center", justify=CENTER)
         
-        if self.sort_item_option.get() == "ABC":
+        if self.search_text.get() != "": #check if the entry is empty
+            c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? AND ItemName LIKE '%{}%' OR Description LIKE '%{}%'".format(self.search_text.get(), self.search_text.get()), (selection,)) #retrieve items with search contents
+        elif self.sort_item_option.get() == "ABC":
             c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY ItemName ASC", (selection,))
         elif self.sort_item_option.get() == "Date":
             c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY DateCreated ASC", (selection,))
@@ -297,6 +304,7 @@ class MainProgram:
             c.execute("SELECT ItemName FROM Items WHERE Catalogue = ? ORDER BY ItemID ASC", (selection,))
 
         result = c.fetchall()
+        print(result)
         counter = 1
         for i in result:
             self.item_listbox.insert(counter, i[0])
